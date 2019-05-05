@@ -3,8 +3,11 @@ use std::path::PathBuf;
 use std::io::BufReader;
 use std::fs::File;
 
-mod tokenize;
-use tokenize::Token;
+mod tokenizer;
+use tokenizer::Token;
+
+mod parser;
+use parser::Object;
 
 fn main() {
     const USAGE: &str = "usage: json_parser path/to/json/file";
@@ -34,9 +37,6 @@ fn main() {
     };
 
     let mut reader = BufReader::new(file);
-    let tokens: Vec<Token> = tokenize::tokenize(&mut reader);
-    for token in tokens {
-        println!("{:?}", token);
-    }
-
+    let tokens: Vec<Token> = tokenizer::tokenize(&mut reader);
+    let json: Json = parser::parse(tokens);
 }

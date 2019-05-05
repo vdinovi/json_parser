@@ -2,7 +2,7 @@ use std::fmt;
 use std::io::BufRead;
 
 #[derive(Debug)]
-enum TokenType {
+pub enum TokenType {
     LBrace,
     RBrace,
     LBracket,
