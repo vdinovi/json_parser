@@ -6,6 +6,7 @@
             "GlossList": {
                 "GlossEntry": {
                     "ID": "SGML",
+                    "number": 7.123,
                     "SortAs": "SGML",
                     "GlossTerm": "Standard Generalized Markup Language",
                     "Acronym": "SGML",
