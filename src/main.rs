@@ -9,9 +9,11 @@ use std::fmt;
 enum TokenType {
     LBrace,
     RBrace,
+    LBracket,
+    RBracket,
     Colon,
     String,
-    Number,
+    //Number,
     Unknown
 }
 
@@ -22,38 +24,52 @@ struct Token {
 
 impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Token{{type: {:?}}}", self.r#type)
+        write!(f, "Token{{type: {:?}, data: {:?}}}", self.r#type, self.data)
     }
 }
 
 fn tokenize<R: BufRead>(r: &mut R) -> Vec<Token> {
-    let mut byte_buf: Vec<u8> = vec![1, 2, 3];
-    let mut tok_buf: Vec<Token> = vec![];
-    r.read_to_end(&mut byte_buf);
+    let mut byte_buf: Vec<u8> = Vec::new();
+    let mut tok_buf: Vec<Token> = Vec::new();
+    match r.read_to_end(&mut byte_buf) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("Read Error: {}", e);
+            std::process::exit(1);
+        }
+    };
     let mut byte_iter: std::vec::IntoIter<u8> = byte_buf.into_iter();
 
     loop {
         match byte_iter.next() {
-            Some(byte) => tokenize_main(byte, &mut byte_iter, &mut tok_buf),
+            Some(byte) => {
+                match tokenize_main(byte, &mut byte_iter) {
+                    Some(token) => tok_buf.push(token),
+                    None        => ()
+                }
+            },
             None => break
         };
     };
     tok_buf
 }
 
-fn tokenize_main<'a>(byte: u8, byte_iter: &'a std::vec::IntoIter<u8>, tok_buf: &mut Vec<Token>) -> &'a std::vec::IntoIter<u8> {
+fn tokenize_main(byte: u8, byte_iter: &mut std::vec::IntoIter<u8>) -> Option<Token> {
     match byte {
-        b' ' | b'\n' | b'\t'  => (),
-        b'{'  => tok_buf.push(Token{ r#type: TokenType::LBrace, data: None  }),
-        b'}'  => tok_buf.push(Token{ r#type: TokenType::RBrace, data: None  }),
-        b'"'  => { tokenize_string(&mut byte_iter, &mut tok_buf); () },
-        _     => tok_buf.push(Token{ r#type: TokenType::Unknown, data: None  })
-    };
-    byte_iter
+        b' ' | b'\n' | b'\t'  => None,
+        b'{'  => Some(Token{ r#type: TokenType::LBrace,    data: None  }),
+        b'}'  => Some(Token{ r#type: TokenType::RBrace,    data: None  }),
+        b'['  => Some(Token{ r#type: TokenType::LBracket,  data: None  }),
+        b']'  => Some(Token{ r#type: TokenType::RBracket,  data: None  }),
+        b':'  => Some(Token{ r#type: TokenType::Colon,     data: None  }),
+        b'"'  => Some(tokenize_string(byte_iter)),
+        _     => Some(Token{ r#type: TokenType::Unknown, data: None  })
+    }
 }
 
-fn tokenize_string<'a>(byte_iter: &'a std::vec::IntoIter<u8>, tok_buf: &mut Vec<Token>) -> &'a std::vec::IntoIter<u8> {
-    let mut data_buf: Vec<u8> = vec![];
+fn tokenize_string(byte_iter: &mut std::vec::IntoIter<u8>) -> Token {
+    byte_iter.next(); // skip opening quote
+    let mut data_buf: Vec<u8> = Vec::new();
     loop {
         match byte_iter.next() {
             Some(byte) => match byte {
@@ -63,11 +79,11 @@ fn tokenize_string<'a>(byte_iter: &'a std::vec::IntoIter<u8>, tok_buf: &mut Vec<
             None => ()
         };
     };
-    tok_buf.push(Token{ r#type: TokenType::String, data: Some(data_buf) });
-    byte_iter
+    Token{ r#type: TokenType::String, data: Some(data_buf) }
 }
 
-fn main() { const usage: &str = "usage: json_parser path/to/json/file";
+fn main() {
+    const usage: &str = "usage: json_parser path/to/json/file";
     let args: Vec<String> = env::args().collect();
 
     if args.len() != 2 {
@@ -95,5 +111,7 @@ fn main() { const usage: &str = "usage: json_parser path/to/json/file";
 
     let mut reader = BufReader::new(file);
     let tokens: Vec<Token> = tokenize(&mut reader);
-    println!("{:?}", tokens);
+    for token in tokens {
+        println!("{:?}", token);
+    }
 }
