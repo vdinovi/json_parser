@@ -3,20 +3,10 @@ use crate::tokenizer::{Token, TokenType};
 use std::fmt;
 use std::error;
 
-enum Terminal {
-    String(String),
-    Number(f64)
-}
-
 enum Value {
-    Object(Object),
-    Terminal(Terminal)
-}
-
-impl fmt::Debug for Value {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
+    //Object(Object),
+    Number(f64),
+    //String(String)
 }
 
 pub struct Object {
@@ -25,7 +15,16 @@ pub struct Object {
 
 impl fmt::Debug for Object {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Object {{ {:?} }}", self.map)
+        write!(f, "Object: {{\n").expect("cant write debug string");
+        for (key, value) in &self.map {
+            let val: String = match value {
+                //Value::Object(_) => "Object".to_string(),
+                //Value::String(string) => string.to_string(),
+                Value::Number(number) => number.to_string()
+            };
+            write!(f, "  {}: {}\n", key, val).expect("cant write debug string");
+        };
+        write!(f, "}}\n")
     }
 }
 
@@ -71,6 +70,6 @@ fn parse_object(tok_iter: &mut std::vec::IntoIter<Token>) -> Result<Object, Pars
 
 fn parse_key_values(_tok_iter: &mut std::vec::IntoIter<Token>) -> Result<HashMap<String, Value>, ParseError> {
     let mut map: HashMap<String, Value> = HashMap::new();
-    map.insert("stub".to_string(), Value::Terminal(Terminal::Number(1.0)));
+    map.insert("stub".to_string(), Value::Number(1.0));
     Ok(map)
 }
