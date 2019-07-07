@@ -15,7 +15,7 @@ pub enum TokenType {
     Unknown
 }
 
-enum TokenData {
+pub enum TokenData {
     Number(f64),
     String(String)
 }
@@ -27,9 +27,9 @@ enum TokenizedResult {
 }
 
 pub struct Token {
-    tok_type: TokenType,
-    data:     Option<TokenData>,
-    line_num: u32
+    pub tok_type: TokenType,
+    pub data:     Option<TokenData>,
+    pub line_num: u32
 }
 
 impl fmt::Debug for Token {
