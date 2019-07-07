@@ -16,6 +16,7 @@ pub enum TokenType {
 }
 
 pub enum TokenData {
+    None,
     Number(f64),
     String(String)
 }
@@ -28,18 +29,16 @@ enum TokenizedResult {
 
 pub struct Token {
     pub tok_type: TokenType,
-    pub data:     Option<TokenData>,
+    pub data:     TokenData,
     pub line_num: u32
 }
 
 impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
        let data = match &self.data {
-            Some(d) => match d {
-                TokenData::Number(n) => Some(n.to_string()),
-                TokenData::String(s) => Some(s.clone()),
-            }
-            None    => None
+           TokenData::Number(n) => Some(n.to_string()),
+           TokenData::String(s) => Some(s.clone()),
+           TokenData::None      => None
         };
         write!(f, "Token {{type: {:?}, data: {:?}, line_num: {:?}}}", self.tok_type, data, self.line_num)
     }
@@ -100,12 +99,12 @@ fn tokenize_main(byte: u8, byte_iter: &mut std::vec::IntoIter<u8>, line_num: &mu
     match byte {
         b' ' | b'\t'  => Ok(TokenizedResult::None),
         b'\n' => { *line_num += 1; Ok(TokenizedResult::None) },
-        b'{'  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::LBrace,    data: None, line_num: *line_num })),
-        b'}'  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::RBrace,    data: None, line_num: *line_num })),
-        b'['  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::LBracket,  data: None, line_num: *line_num })),
-        b']'  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::RBracket,  data: None, line_num: *line_num })),
-        b':'  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::Colon,     data: None, line_num: *line_num })),
-        b','  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::Comma,     data: None, line_num: *line_num })),
+        b'{'  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::LBrace,    data: TokenData::None, line_num: *line_num })),
+        b'}'  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::RBrace,    data: TokenData::None, line_num: *line_num })),
+        b'['  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::LBracket,  data: TokenData::None, line_num: *line_num })),
+        b']'  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::RBracket,  data: TokenData::None, line_num: *line_num })),
+        b':'  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::Colon,     data: TokenData::None, line_num: *line_num })),
+        b','  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::Comma,     data: TokenData::None, line_num: *line_num })),
         b'"'  => match tokenize_string(byte_iter, line_num) {
             Ok(token) => Ok(TokenizedResult::One(token)),
             Err(e) => Err(e)
@@ -115,7 +114,7 @@ fn tokenize_main(byte: u8, byte_iter: &mut std::vec::IntoIter<u8>, line_num: &mu
             Err(e) => Err(e)
         },
         // TODO: should return TokenizerError instead of unknown token
-        _     => Ok(TokenizedResult::One(Token{ tok_type: TokenType::Unknown, data: None, line_num: *line_num }))
+        _     => Ok(TokenizedResult::One(Token{ tok_type: TokenType::Unknown, data: TokenData::None, line_num: *line_num }))
     }
 }
 
@@ -137,7 +136,7 @@ fn tokenize_string(byte_iter: &mut std::vec::IntoIter<u8>, line_num: &mut u32) -
             TokenizerError { line_num: *line_num, msg: e.to_string() }
         )
     };
-    Ok(Token{ tok_type: TokenType::String, data: Some(TokenData::String(data_str)), line_num: *line_num })
+    Ok(Token{ tok_type: TokenType::String, data: TokenData::String(data_str), line_num: *line_num })
 }
 
 fn tokenize_number(byte: u8, byte_iter: &mut std::vec::IntoIter<u8>, line_num: &mut u32) -> Result<Vec<Token>, TokenizerError> {
@@ -171,7 +170,7 @@ fn tokenize_number(byte: u8, byte_iter: &mut std::vec::IntoIter<u8>, line_num: &
         }
     };
     Ok(vec![
-        Token{ tok_type: TokenType::Number, data: Some(TokenData::Number(data_num)), line_num: *line_num },
-        Token{ tok_type: TokenType::Comma,  data: None , line_num: *line_num },
+        Token{ tok_type: TokenType::Number, data: TokenData::Number(data_num), line_num: *line_num },
+        Token{ tok_type: TokenType::Comma,  data: TokenData::None , line_num: *line_num },
     ])
 }

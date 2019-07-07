@@ -1,12 +1,13 @@
 use std::collections::HashMap;
-use crate::tokenizer::{Token, TokenType};
+use crate::tokenizer::{Token, TokenType, TokenData};
 use std::fmt;
 use std::error;
 
 enum Value {
-    //Object(Object),
+    Object(Object),
     Number(f64),
-    //String(String)
+    String(String),
+    Array(Vec<Value>)
 }
 
 pub struct Object {
@@ -19,7 +20,7 @@ impl fmt::Debug for Object {
         for (key, value) in &self.map {
             let val: String = match value {
                 //Value::Object(_) => "Object".to_string(),
-                //Value::String(string) => string.to_string(),
+                Value::String(string) => string.to_string(),
                 Value::Number(number) => number.to_string()
             };
             write!(f, "  {}: {}\n", key, val).expect("cant write debug string");
@@ -68,8 +69,98 @@ fn parse_object(tok_iter: &mut std::vec::IntoIter<Token>) -> Result<Object, Pars
     }
 }
 
-fn parse_key_values(_tok_iter: &mut std::vec::IntoIter<Token>) -> Result<HashMap<String, Value>, ParseError> {
+fn parse_key_values(tok_iter: &mut std::vec::IntoIter<Token>) -> Result<HashMap<String, Value>, ParseError> {
     let mut map: HashMap<String, Value> = HashMap::new();
-    map.insert("stub".to_string(), Value::Number(1.0));
-    Ok(map)
+    loop {
+        // Match string
+        let key = match tok_iter.next() {
+            Some(token) => match &token.tok_type {
+                TokenType::String => match &token.data {
+                    TokenData::String(string) => string.to_string(),
+                    other => {
+                        let error_str = format!("unexpected token {:?}", token).to_string();
+                        return Err(ParseError { line_num: token.line_num, msg: error_str })
+                    }
+                }
+                TokenType::RBrace => return Ok(map),
+                other => {
+                    let error_str = format!("unexpected token {:?}", token).to_string();
+                    return Err(ParseError { line_num: token.line_num, msg: error_str })
+                }
+            },
+            None => {
+                let error_str = format!("unexpected end of token stream").to_string();
+                return Err(ParseError { line_num: 0, msg: error_str } )
+            }
+        };
+        // Match colon
+        match tok_iter.next() {
+            Some(token) => match &token.tok_type {
+                TokenType::Colon => (),
+                other => {
+                    let error_str = format!("expected colon, found {:?}", token).to_string();
+                    return Err(ParseError { line_num: token.line_num, msg: error_str })
+                }
+            },
+            None => {
+                let error_str = "unexpected end of token stream".to_string();
+                return Err(ParseError { line_num: 0, msg: error_str })
+            }
+        }
+        // Match RHS
+        let value = match tok_iter.next() {
+            Some(token) => match &token.tok_type {
+                TokenType::LBrace => match parse_object(tok_iter) {
+                    Ok(object) => Value::Object(object),
+                    Err(e) => return Err(e)
+                },
+                TokenType::LBracket => match parse_array(tok_iter) {
+                    Ok(array) => Value::Array(array),
+                    Err(e) => return Err(e)
+                },
+                TokenType::Number | TokenType::String => match token.data {
+                    TokenData::String(string) => Value::String(string),
+                    TokenData::Number(number) => Value::Number(number)
+                },
+                other => {
+                    let error_str = format!("unexpected token {:?}", token.tok_type).to_string();
+                    return Err(ParseError { line_num: 0, msg: error_str })
+                }
+
+            },
+            None => {
+                let error_str = "unexpected end of token stream".to_string();
+                return Err(ParseError { line_num: 0, msg: error_str })
+            }
+        };
+        match map.insert(key, value) {
+            Ok(v) => Ok(map),
+            Err(e) => Err(e)
+        }
+    }
+}
+
+fn parse_array(tok_iter: &mut std::vec::IntoIter<Token>) -> Result<Vec<Value>, ParseError> {
+    let values: Vec<Value> = Vec::new();
+    loop {
+        match tok_iter.next() {
+            Some(token) => match token.tok_type {
+                TokenType::Number | TokenType::String => match token.data {
+                    TokenData::String(string) => values.push(Value::String(string)),
+                    TokenData::Number(number) => values.push(Value::Number(number))
+                },
+                TokenType::RBracket => break,
+                other => {
+                    let error_str = format!("unexpected token {:?}", token).to_string();
+                    return Err(ParseError { line_num: 0, msg: error_str })
+
+                }
+            },
+            None => {
+                let error_str = "unexpected end of token stream".to_string();
+                return Err(ParseError { line_num: 0, msg: error_str })
+            }
+        }
+    };
+    Ok(values)
 }
