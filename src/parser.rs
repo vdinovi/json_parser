@@ -1,36 +1,56 @@
-use std::collections::HashMap;
+/*use std::collections::HashMap;
 use crate::tokenizer::{Token, TokenType};
+use fmt;
 
-enum ObjectValue {
-    String(Some(String)),
-    Number(Some(f64)),
-    Array(Some(Vec<ObjectTypes>)),
-    Object(Some(Object)),
-    Null(None)
+enum Terminal {
+    String,
+    Number
 }
 
-// I don't think this is right, it needs to be a variant: 
-pub struct Object {
-    map: HashMap<String, ObjectValue>
+enum Value {
+    Object,
+    Terminal
 }
 
-pub fn parse(tokens: &Vec<Token>) -> Vec<Object> {
+struct Object {
+    map: HashMap<String, Value>,
+}
+
+#[derive(Debug, Clone)]
+struct ParseError {
+    line: i32,
+    msg: String
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ParseError (line {}): {}", self.line, self.msg)
+    }
+}
+
+impl error::Error for ParseError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        None
+    }
+}
+
+pub fn parse(tokens: Vec<Token>) -> Result<Object, ParseError> {
     let mut tok_iter: std::vec::IntoIter<Token> = tokens.into_iter();
     let mut objects: Vec<Object> = Vec::new();
+    let mut rootObject: Object  = Object {};
 
-    loop {
-        let object: Object = match tok_iter.next() {
-            Some(token) => parse_object(token, &mut tok_iter),
-            None        => break
-        };
-        objects.push(object);
-    };
-    objects
+    match tok_iter.next() {
+        Some(token) => match token {
+            LBrace =>  parse_object(token, &mut tok_iter),
+            _ => ParseError { 
+        },
+        None        => break
+    }
 }
 
 fn parse_object(token: Token, tok_iter: &mut std::vec::IntoIter<Token>) -> Object {
     let map: HashMap<String, Object> = match token {
-        LBrace(_, data) => parse_key_values(tok_iter),
+        TokenType::LBrace((_, data)) => parse_key_values(tok_iter),
         other => {
             println!("Parse Error: unexpected token ({}) expecting LBrace", other);
             std::process::exit(1);
@@ -58,4 +78,4 @@ fn parse_key_values(tok_iter: &mut std::vec::IntoIter<Token>) -> HashMap<String,
     }
 }
 
-
+*/

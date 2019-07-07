@@ -1,5 +1,6 @@
 use std::fmt;
 use std::io::BufRead;
+use std::error;
 
 #[derive(Debug)]
 pub enum TokenType {
@@ -26,8 +27,9 @@ enum TokenizedResult {
 }
 
 pub struct Token {
-    r#type: TokenType,
-    data:   Option<TokenData>
+    tok_type: TokenType,
+    data:     Option<TokenData>,
+    line_num: u32
 }
 
 impl fmt::Debug for Token {
@@ -39,87 +41,117 @@ impl fmt::Debug for Token {
             }
             None    => None
         };
-        write!(f, "Token{{type: {:?}, data: {:?}}}", self.r#type, data)
+        write!(f, "Token {{type: {:?}, data: {:?}, line_num: {:?}}}", self.tok_type, data, self.line_num)
     }
 }
 
-pub fn tokenize<R: BufRead>(r: &mut R) -> Vec<Token> {
+#[derive(Debug, Clone)]
+pub struct TokenizerError {
+    line_num: u32,
+    msg: String
+}
+
+impl fmt::Display for TokenizerError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "TokenizerError (line {}): {}", self.line_num, self.msg)
+    }
+}
+
+impl error::Error for TokenizerError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        None
+    }
+}
+
+pub fn tokenize<R: BufRead>(r: &mut R) -> Result<Vec<Token>, TokenizerError> {
     let mut byte_buf: Vec<u8> = Vec::new();
     let mut tok_buf: Vec<Token> = Vec::new();
+    let mut line_num: u32 = 1;
     match r.read_to_end(&mut byte_buf) {
         Ok(v) => v,
-        Err(e) => {
-            println!("Read Error: {}", e);
-            std::process::exit(1);
-        }
+        Err(e) => return Err(
+            TokenizerError { line_num, msg: format!("Read Error: {}", e).to_string() }
+        )
     };
     let mut byte_iter: std::vec::IntoIter<u8> = byte_buf.into_iter();
 
     loop {
         match byte_iter.next() {
             Some(byte) => {
-                match tokenize_main(byte, &mut byte_iter) {
-                    TokenizedResult::None       => (),
-                    TokenizedResult::One(tok)   => tok_buf.push(tok),
-                    TokenizedResult::Many(mut toks) => tok_buf.append(&mut toks)
+                match tokenize_main(byte, &mut byte_iter, &mut line_num) {
+                    Ok(result) => match result {
+                        TokenizedResult::None       => (),
+                        TokenizedResult::One(tok)   => tok_buf.push(tok),
+                        TokenizedResult::Many(mut toks) => tok_buf.append(&mut toks)
+                    },
+                    Err(e) => return Err(e)
+
                 }
             },
             None => break
         };
     };
-    tok_buf
+    Ok(tok_buf)
 }
 
 
 
-fn tokenize_main(byte: u8, byte_iter: &mut std::vec::IntoIter<u8>) -> TokenizedResult {
+fn tokenize_main(byte: u8, byte_iter: &mut std::vec::IntoIter<u8>, line_num: &mut u32) -> Result<TokenizedResult, TokenizerError> {
     match byte {
-        b' ' | b'\n' | b'\t'  => TokenizedResult::None,
-        b'{'  => TokenizedResult::One(Token{ r#type: TokenType::LBrace,    data: None  }),
-        b'}'  => TokenizedResult::One(Token{ r#type: TokenType::RBrace,    data: None  }),
-        b'['  => TokenizedResult::One(Token{ r#type: TokenType::LBracket,  data: None  }),
-        b']'  => TokenizedResult::One(Token{ r#type: TokenType::RBracket,  data: None  }),
-        b':'  => TokenizedResult::One(Token{ r#type: TokenType::Colon,     data: None  }),
-        b','  => TokenizedResult::One(Token{ r#type: TokenType::Comma,     data: None  }),
-        b'"'  => TokenizedResult::One(tokenize_string(byte_iter)),
-        b'1' ... b'9' | b'.'  => TokenizedResult::Many(tokenize_number(byte, byte_iter)),
-        _     => TokenizedResult::One(Token{ r#type: TokenType::Unknown, data: None  })
+        b' ' | b'\t'  => Ok(TokenizedResult::None),
+        b'\n' => { *line_num += 1; Ok(TokenizedResult::None) },
+        b'{'  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::LBrace,    data: None, line_num: *line_num })),
+        b'}'  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::RBrace,    data: None, line_num: *line_num })),
+        b'['  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::LBracket,  data: None, line_num: *line_num })),
+        b']'  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::RBracket,  data: None, line_num: *line_num })),
+        b':'  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::Colon,     data: None, line_num: *line_num })),
+        b','  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::Comma,     data: None, line_num: *line_num })),
+        b'"'  => match tokenize_string(byte_iter, line_num) {
+            Ok(token) => Ok(TokenizedResult::One(token)),
+            Err(e) => Err(e)
+        },
+        b'1' ... b'9' | b'.'  => match tokenize_number(byte, byte_iter, line_num) {
+            Ok(tokens) => Ok(TokenizedResult::Many(tokens)),
+            Err(e) => Err(e)
+        },
+        // TODO: should return TokenizerError instead of unknown token
+        _     => Ok(TokenizedResult::One(Token{ tok_type: TokenType::Unknown, data: None, line_num: *line_num }))
     }
 }
 
-fn tokenize_string(byte_iter: &mut std::vec::IntoIter<u8>) -> Token {
+fn tokenize_string(byte_iter: &mut std::vec::IntoIter<u8>, line_num: &mut u32) -> Result<Token, TokenizerError> {
     let mut data_buf: Vec<u8> = Vec::new();
     loop {
         match byte_iter.next() {
             Some(byte) => match byte {
-                b'"' => break,
-                _    => data_buf.push(byte)
+                b'"'  => break,
+                b'\n' => *line_num += 1,
+                _     => data_buf.push(byte)
             }
             None => ()
         };
     };
     let data_str = match String::from_utf8(data_buf) {
         Ok(s) => s,
-        Err(e) => {
-            println!("Tokenize Error: {}", e);
-            std::process::exit(1);
-        }
+        Err(e) => return Err(
+            TokenizerError { line_num: *line_num, msg: e.to_string() }
+        )
     };
-    Token{ r#type: TokenType::String, data: Some(TokenData::String(data_str)) }
+    Ok(Token{ tok_type: TokenType::String, data: Some(TokenData::String(data_str)), line_num: *line_num })
 }
 
-fn tokenize_number(byte: u8, byte_iter: &mut std::vec::IntoIter<u8>) -> Vec<Token> {
+fn tokenize_number(byte: u8, byte_iter: &mut std::vec::IntoIter<u8>, line_num: &mut u32) -> Result<Vec<Token>, TokenizerError> {
     let mut data_buf: Vec<u8> = vec![byte];
     loop {
         match byte_iter.next() {
             Some(byte) => match byte {
                 b'1' ... b'9' | b'.'  => data_buf.push(byte),
-                b' ' | b'\n' | b'\t'  => (),
+                b' ' | b'\t'          => (),
+                b'\n'                 => *line_num += 1,
                 b','                  => break,
-                other                 => {
-                    println!("Tokenize Error: unexpected token ({}) while parsing number (expecting comma)", other);
-                    std::process::exit(1);
-                }
+                unknown               => return Err(
+                    TokenizerError { line_num: *line_num, msg: format!("could not parse token '{}'", unknown).to_string() }
+                )
             }
             None => ()
         };
@@ -138,8 +170,8 @@ fn tokenize_number(byte: u8, byte_iter: &mut std::vec::IntoIter<u8>) -> Vec<Toke
             std::process::exit(1);
         }
     };
-    vec![
-        Token{ r#type: TokenType::Number, data: Some(TokenData::Number(data_num)) },
-        Token{ r#type: TokenType::Comma,  data: None },
-    ]
+    Ok(vec![
+        Token{ tok_type: TokenType::Number, data: Some(TokenData::Number(data_num)), line_num: *line_num },
+        Token{ tok_type: TokenType::Comma,  data: None , line_num: *line_num },
+    ])
 }

@@ -7,7 +7,7 @@ mod tokenizer;
 use tokenizer::Token;
 
 mod parser;
-use parser::Object;
+//use parser::Object;
 
 fn main() {
     const USAGE: &str = "usage: json_parser path/to/json/file";
@@ -37,6 +37,16 @@ fn main() {
     };
 
     let mut reader = BufReader::new(file);
-    let tokens: Vec<Token> = tokenizer::tokenize(&mut reader);
-    let json: Json = parser::parse(tokens);
+    let tokens: Vec<Token> = match tokenizer::tokenize(&mut reader) {
+        Ok(tokens) => tokens,
+        Err(e) => {
+            println!("{}", e); 
+            std::process::exit(1)
+        }
+    };
+    for tok in tokens {
+        println!("{:?}", tok);
+    }
+
+    //let json: Json = parser::parse(tokens);
 }
