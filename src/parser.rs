@@ -72,27 +72,6 @@ fn parse_object(tok_iter: &mut std::vec::IntoIter<Token>) -> Result<Object, Pars
 fn parse_key_values(tok_iter: &mut std::vec::IntoIter<Token>) -> Result<HashMap<String, Value>, ParseError> {
     let mut map: HashMap<String, Value> = HashMap::new();
     loop {
-        // Match string
-        let key = match tok_iter.next() {
-            Some(token) => match &token.tok_type {
-                TokenType::String => match &token.data {
-                    TokenData::String(string) => string.to_string(),
-                    other => {
-                        let error_str = format!("unexpected token {:?}", token).to_string();
-                        return Err(ParseError { line_num: token.line_num, msg: error_str })
-                    }
-                }
-                TokenType::RBrace => return Ok(map),
-                other => {
-                    let error_str = format!("unexpected token {:?}", token).to_string();
-                    return Err(ParseError { line_num: token.line_num, msg: error_str })
-                }
-            },
-            None => {
-                let error_str = format!("unexpected end of token stream").to_string();
-                return Err(ParseError { line_num: 0, msg: error_str } )
-            }
-        };
         // Match colon
         match tok_iter.next() {
             Some(token) => match &token.tok_type {
@@ -133,12 +112,40 @@ fn parse_key_values(tok_iter: &mut std::vec::IntoIter<Token>) -> Result<HashMap<
                 return Err(ParseError { line_num: 0, msg: error_str })
             }
         };
-        match map.insert(key, value) {
-            Ok(v) => Ok(map),
-            Err(e) => Err(e)
+        // Insert into map
+        let result = match map.insert(key, value) {
+            Some(v) => Ok(v),
+            None => {
+                let error_str = "failed to insert value into map".to_string();
+                return Err(ParseError { line_num: 0, msg: error_str })
+            }
         }
     }
 }
+
+fn parse_key(tok_iter: &mut std::vec::IntoIter<Token>) -> Result<String> {
+    // Match string
+    let key = match tok_iter.next() {
+        Some(token) => match &token.tok_type {
+            TokenType::String => match &token.data {
+                TokenData::String(string) => string.to_string(),
+                other => {
+                    let error_str = format!("unexpected token {:?}", token).to_string();
+                    return Err(ParseError { line_num: token.line_num, msg: error_str })
+                }
+            }
+            TokenType::RBrace => return Ok(map),
+            other => {
+                let error_str = format!("unexpected token {:?}", token).to_string();
+                return Err(ParseError { line_num: token.line_num, msg: error_str })
+            }
+        },
+        None => {
+            let error_str = format!("unexpected end of token stream").to_string();
+            return Err(ParseError { line_num: 0, msg: error_str } )
+        }
+    };
+};
 
 fn parse_array(tok_iter: &mut std::vec::IntoIter<Token>) -> Result<Vec<Value>, ParseError> {
     let values: Vec<Value> = Vec::new();
