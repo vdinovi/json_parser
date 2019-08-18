@@ -24,8 +24,9 @@ impl<'a> TokenStream<'a> {
 
     fn next(&mut self) -> Result<&Token, ParseError> {
         if self.position + 1 < self.size {
+            let token: &Token = &self.tokens[self.position];
             self.position += 1;
-            Ok(&self.tokens[self.position])
+            Ok(token)
         } else {
             Err(ParseError::new("Cannot advance beyond end of token stream", 0))
         }
@@ -41,7 +42,7 @@ impl<'a> TokenStream<'a> {
     }
 
     fn peek(&self) -> Result<&Token, ParseError> {
-        if self.position > 0 && self.position + 1 < self.size {
+        if self.position > 0 && self.position < self.size {
             Ok(&self.tokens[self.position])
         } else {
             Err(ParseError::new("Cannot peek beyond range of token stream", 0))
@@ -147,7 +148,10 @@ fn parse_value(stream: &mut TokenStream) -> Result<Value, ParseError> {
             let object: Object = parse_object(stream)?;
             return Ok(Value::Object(object))
         },
-        //TokenType::LBracket => { parse_array(stream) }
+        TokenType::LBracket => {
+            let array: Vec<Value> = parse_array(stream)?;
+            return Ok(Value::Array(array))
+        },
         _ => {
             let token: &Token = stream.next()?;
             match token.tok_type {
@@ -163,6 +167,25 @@ fn parse_value(stream: &mut TokenStream) -> Result<Value, ParseError> {
     }
 }
 
+fn parse_array(stream: &mut TokenStream) -> Result<Vec<Value>, ParseError> {
+    let mut values: Vec<Value> = Vec::new();
+    stream.consume(TokenType::LBracket)?;
+
+    loop {
+        match stream.peek()?.tok_type {
+            TokenType::RBracket => break,
+            _ => ()
+        };
+        values.push(parse_value(stream)?);
+        match stream.peek()?.tok_type {
+            TokenType::Comma => { stream.next()?; },
+            _ => ()
+        };
+    };
+    stream.consume(TokenType::RBracket)?;
+    Ok(values)
+}
+
 fn parse_key_values(stream: &mut TokenStream) -> Result<HashMap<String, Value>, ParseError> {
     let mut map: HashMap<String, Value> = HashMap::new();
     loop {
@@ -173,38 +196,11 @@ fn parse_key_values(stream: &mut TokenStream) -> Result<HashMap<String, Value>, 
         let key: String = parse_key(stream)?;
         stream.consume(TokenType::Colon)?;
         let value: Value = parse_value(stream)?;
-        let optional_comma: &Token = stream.next()?;
-        match optional_comma.tok_type {
-            TokenType::Comma => (),
-            _ => { stream.backtrack()? }
+        match stream.peek()?.tok_type {
+            TokenType::Comma => { stream.next()?; },
+            _ => ()
         };
         map.insert(key, value);
         print!("map: {:?}\n", map);
     }
 }
-
-
-/*fn parse_array(stream: &TokenStream) -> Result<Vec<Value>, ParseError> {
-    let values: Vec<Value> = Vec::new();
-    loop {
-        match stream.next() {
-            Some(token) => match token.tok_type {
-                TokenType::Number | TokenType::String => match token.data {
-                    TokenData::String(string) => values.push(Value::String(string)),
-                    TokenData::Number(number) => values.push(Value::Number(number))
-                },
-                TokenType::RBracket => break,
-                other => {
-                    let error_str = format!("unexpected token {:?}", token).to_string();
-                    return Err(ParseError { line_num: 0, msg: error_str })
-
-                }
-            },
-            None => {
-                let error_str = "unexpected end of token stream".to_string();
-                return Err(ParseError { line_num: 0, msg: error_str })
-            }
-        }
-    };
-    Ok(values)
-}*/
