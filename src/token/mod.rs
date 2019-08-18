@@ -1,84 +1,11 @@
-use std::fmt;
+pub mod error;
+pub mod stream;
+pub mod token;
+
 use std::io::BufRead;
-use std::error;
+use error::TokenizerError;
+use token::{Token, TokenizedResult, TokenType, TokenData};
 
-#[derive(Debug)]
-pub enum TokenType {
-    LBrace,
-    RBrace,
-    LBracket,
-    RBracket,
-    Colon,
-    Comma,
-    String,
-    Number,
-    Unknown
-}
-
-
-impl TokenType {
-    pub fn ordinal(&self) -> u8 {
-        match self {
-            TokenType::LBrace   => 0,
-            TokenType::RBrace   => 1,
-            TokenType::LBracket => 2,
-            TokenType::RBracket => 3,
-            TokenType::Colon    => 4,
-            TokenType::Comma    => 5,
-            TokenType::String   => 6,
-            TokenType::Number   => 7,
-            TokenType::Unknown  => 8
-        }
-    }
-}
-
-pub enum TokenData {
-    None,
-    Number(f64),
-    String(String)
-}
-
-
-enum TokenizedResult {
-    None,
-    One(Token),
-    Many(Vec<Token>)
-}
-
-pub struct Token {
-    pub tok_type: TokenType,
-    pub data:     TokenData,
-    pub line_num: u32
-}
-
-impl fmt::Debug for Token {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-       let data = match &self.data {
-           TokenData::Number(n) => Some(n.to_string()),
-           TokenData::String(s) => Some(s.clone()),
-           TokenData::None      => None
-        };
-        write!(f, "Token {{type: {:?}, data: {:?}, line_num: {:?}}}", self.tok_type, data, self.line_num)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct TokenizerError {
-    line_num: u32,
-    msg: String
-}
-
-impl fmt::Display for TokenizerError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TokenizerError (line {}): {}", self.line_num, self.msg)
-    }
-}
-
-impl error::Error for TokenizerError {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        None
-    }
-}
 
 pub fn tokenize<R: BufRead>(r: &mut R) -> Result<Vec<Token>, TokenizerError> {
     let mut byte_buf: Vec<u8> = Vec::new();
@@ -110,8 +37,6 @@ pub fn tokenize<R: BufRead>(r: &mut R) -> Result<Vec<Token>, TokenizerError> {
     };
     Ok(tok_buf)
 }
-
-
 
 fn tokenize_main(byte: u8, byte_iter: &mut std::vec::IntoIter<u8>, line_num: &mut u32) -> Result<TokenizedResult, TokenizerError> {
     match byte {

@@ -1,54 +1,29 @@
+mod token;
+mod parser;
+
 use std::env;
 use std::path::PathBuf;
 use std::io::BufReader;
 use std::fs::File;
+use token::tokenize;
+use token::token::Token;
+use parser::object::Object;
+use parser::parse;
 
-mod tokenizer;
-use tokenizer::Token;
-
-mod parser;
-
-fn main() {
+fn main() -> Result<(), Box<std::error::Error>> {
     const USAGE: &str = "usage: json_parser path/to/json/file";
     let args: Vec<String> = env::args().collect();
-
     if args.len() != 2 {
         println!("{}", USAGE);
         std::process::exit(1);
     }
-
     let rel_path = PathBuf::from(args[1].to_string());
-    let full_path = match rel_path.canonicalize() {
-        Ok(v) => v,
-        Err(e) => {
-            println!("File Error: {}", e);
-            std::process::exit(1);
-        }
-    };
-
+    let full_path = rel_path.canonicalize()?;
     println!("Parsing file: {:?}", full_path);
-    let file = match File::open(full_path) {
-        Ok(v) => v,
-        Err(e) => {
-            println!("File Error: {}", e);
-            std::process::exit(1);
-        }
-    };
-
+    let file = File::open(full_path)?;
     let mut reader = BufReader::new(file);
-    let tokens: Vec<Token> = match tokenizer::tokenize(&mut reader) {
-        Ok(tokens) => tokens,
-        Err(e) => { println!("{}", e); std::process::exit(1) }
-    };
-    /*for tok in tokens {
-        println!("{:?}", tok);
-    }*/
-
-    let object: parser::Object = match parser::parse(tokens) {
-        Ok(object) => object,
-        Err(e) => { println!("{}", e); std::process::exit(1) }
-    };
-
-
-    println!("{:?}", object)
+    let tokens: Vec<Token> = tokenize(&mut reader)?;
+    let object: Object = parse(tokens)?;
+    println!("{:?}", object);
+    Ok(())
 }
