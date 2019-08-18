@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use crate::token::token::{Token, TokenType, TokenData};
 use crate::token::stream::TokenStream;
 use error::ParseError;
-use object::{Object, Value};
+use object::{Object, Array, Value};
 
 pub fn parse(tokens: Vec<Token>) -> Result<Object, ParseError> {
     parse_object(&mut TokenStream::new(&tokens))
@@ -36,7 +36,7 @@ fn parse_value(stream: &mut TokenStream) -> Result<Value, ParseError> {
         },
         TokenType::LBracket => {
             let array: Vec<Value> = parse_array(stream)?;
-            return Ok(Value::Array(array))
+            return Ok(Value::Array(Array { values: array }))
         },
         _ => {
             let token: &Token = stream.next()?;

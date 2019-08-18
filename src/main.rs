@@ -24,6 +24,6 @@ fn main() -> Result<(), Box<std::error::Error>> {
     let mut reader = BufReader::new(file);
     let tokens: Vec<Token> = tokenize(&mut reader)?;
     let object: Object = parse(tokens)?;
-    println!("{:?}", object);
+    print!("{}", object.to_pretty_string(0));
     Ok(())
 }
