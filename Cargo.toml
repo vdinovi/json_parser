@@ -5,3 +5,5 @@ authors = ["vdinovi <vito.dinovi@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+backtrace = "0.3.34"
+

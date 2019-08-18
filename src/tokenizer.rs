@@ -15,11 +15,29 @@ pub enum TokenType {
     Unknown
 }
 
+
+impl TokenType {
+    pub fn ordinal(&self) -> u8 {
+        match self {
+            LBrace   => 0,
+            RBrace   => 1,
+            LBracket => 2,
+            RBracket => 3,
+            Colon    => 4,
+            Comma    => 5,
+            String   => 6,
+            Number   => 7,
+            Unknown  => 8
+        }
+    }
+}
+
 pub enum TokenData {
     None,
     Number(f64),
     String(String)
 }
+
 
 enum TokenizedResult {
     None,
