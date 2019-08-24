@@ -30,7 +30,7 @@ impl Object {
 
 impl fmt::Display for Object {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_pretty_string(0))
+        write!(f, "{}", self.to_basic_string())
     }
 }
 
@@ -89,8 +89,8 @@ pub enum Value {
 impl fmt::Display for Value {
     fn fmt(&self, f : &mut fmt::Formatter) -> fmt::Result {
         let value = match self {
-            Value::Object(object) => object.to_string(),
-            Value::Array(array) => array.to_string(),
+            Value::Object(object) => object.to_basic_string(),
+            Value::Array(array) => array.to_basic_string(),
             Value::String(string) => format!("\"{}\"", string),
             Value::Number(number) => number.to_string(),
             Value::Keyword(string) => string.to_string()
