@@ -12,7 +12,7 @@ impl Object {
     pub fn to_basic_string(&self) -> String {
         [
             "{",
-            self.map.iter().map(|(key, value)| format!("{}:{}", key, value)).join(",").as_str(),
+            self.map.iter().map(|(key, value)| format!("\"{}\":{}", key, value)).join(",").as_str(),
             "}"
         ].join("")
     }
@@ -21,7 +21,7 @@ impl Object {
         let indent: String = std::iter::repeat(" ").take(depth * 2).join("");
         [
             format!("{{\n"),
-            self.map.iter().map(|(key, value)| format!("{}  {}: {}", indent, key, value.to_pretty_string(depth + 1))).join(",\n"),
+            self.map.iter().map(|(key, value)| format!("{}  \"{}\": {}", indent, key, value.to_pretty_string(depth + 1))).join(",\n"),
             format!("\n{}}}", indent),
         ].join("")
     }
@@ -82,7 +82,8 @@ pub enum Value {
     Object(Object),
     Number(f64),
     String(String),
-    Array(Array)
+    Array(Array),
+    Keyword(String)
 }
 
 impl fmt::Display for Value {
@@ -90,8 +91,9 @@ impl fmt::Display for Value {
         let value = match self {
             Value::Object(object) => object.to_string(),
             Value::Array(array) => array.to_string(),
-            Value::String(string) => string.to_string(),
-            Value::Number(number) => number.to_string()
+            Value::String(string) => format!("\"{}\"", string),
+            Value::Number(number) => number.to_string(),
+            Value::Keyword(string) => string.to_string()
         };
         write!(f, "{}", value)
     }
@@ -102,8 +104,9 @@ impl Value {
         match self {
             Value::Object(object) => object.to_pretty_string(depth),
             Value::Array(array) => array.to_pretty_string(depth),
-            Value::String(string) => string.to_string(),
-            Value::Number(number) => number.to_string()
+            Value::String(string) => format!("\"{}\"", string),
+            Value::Number(number) => number.to_string(),
+            Value::Keyword(string) => string.to_string()
         }
     }
 }

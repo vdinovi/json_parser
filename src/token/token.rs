@@ -16,6 +16,9 @@ pub enum TokenType {
     Comma,
     String,
     Number,
+    True,
+    False,
+    Null,
     Unknown
 }
 
@@ -30,7 +33,10 @@ impl TokenType {
             TokenType::Comma    => 5,
             TokenType::String   => 6,
             TokenType::Number   => 7,
-            TokenType::Unknown  => 8
+            TokenType::True     => 8,
+            TokenType::False    => 9,
+            TokenType::Null     => 10,
+            TokenType::Unknown  => 11
         }
     }
 }

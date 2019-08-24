@@ -24,8 +24,8 @@ pub fn tokenize<R: BufRead>(r: &mut R) -> Result<Vec<Token>, TokenizerError> {
             Some(char) => {
                 match tokenize_main(char, &mut char_iter, &mut line_num) {
                     Ok(result) => match result {
-                        TokenizedResult::None       => (),
-                        TokenizedResult::One(tok)   => tok_buf.push(tok),
+                        TokenizedResult::None           => (),
+                        TokenizedResult::One(tok)       => tok_buf.push(tok),
                         TokenizedResult::Many(mut toks) => tok_buf.append(&mut toks)
                     },
                     Err(e) => return Err(e)
@@ -48,16 +48,10 @@ fn tokenize_main(ch: char, char_iter: &mut Chars, line_num: &mut u32) -> Result<
         ']'  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::RBracket,  data: TokenData::None, line_num: *line_num })),
         ':'  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::Colon,     data: TokenData::None, line_num: *line_num })),
         ','  => Ok(TokenizedResult::One(Token{ tok_type: TokenType::Comma,     data: TokenData::None, line_num: *line_num })),
-        '"'  => match tokenize_string(char_iter, line_num) {
-            Ok(token) => Ok(TokenizedResult::One(token)),
-            Err(e) => Err(e)
-        },
-        '1' ... '9' | '.'  => match tokenize_number(ch, char_iter, line_num) {
-            Ok(tokens) => Ok(TokenizedResult::Many(tokens)),
-            Err(e) => Err(e)
-        },
-        // TODO: should return TokenizerError instead of unknown token
-        _     => Ok(TokenizedResult::One(Token{ tok_type: TokenType::Unknown, data: TokenData::None, line_num: *line_num }))
+        '"'  => Ok(TokenizedResult::One(tokenize_string(char_iter, line_num)?)),
+        'f' | 't' | 'n'  => Ok(TokenizedResult::Many(tokenize_keyword(ch, char_iter, line_num)?)),
+        '0' ... '9' | '.' | '+' | '-'  => Ok(TokenizedResult::Many(tokenize_number(ch, char_iter, line_num)?)),
+        _ => Ok(TokenizedResult::One(Token{ tok_type: TokenType::Unknown, data: TokenData::None, line_num: *line_num }))
     }
 }
 
@@ -76,6 +70,35 @@ fn tokenize_string(char_iter: &mut Chars, line_num: &mut u32) -> Result<Token, T
     };
     let data_str: String = chars.into_iter().collect();
     Ok(Token{ tok_type: TokenType::String, data: TokenData::String(data_str), line_num: *line_num })
+}
+
+fn tokenize_keyword(ch: char, char_iter: &mut Chars, line_num: &mut u32) -> Result<Vec<Token>, TokenizerError> {
+    let mut chars: Vec<char> = vec![ch];
+    loop {
+        match char_iter.next() {
+            Some(ch) => {
+                if ch.is_alphabetic() {
+                    chars.push(ch);
+                } else {
+                    break;
+                }
+            },
+            None => ()
+        }
+    };
+    let keyword: String = chars.into_iter().collect();
+    let token: Token = match keyword.as_str() {
+        "true" => Token{ tok_type: TokenType::True, data: TokenData::None, line_num: *line_num },
+        "false" => Token{ tok_type: TokenType::False, data: TokenData::None, line_num: *line_num },
+        "null"  => Token{ tok_type: TokenType::Null, data: TokenData::None, line_num: *line_num },
+        _ =>  return Err(
+            TokenizerError { line_num: *line_num, msg: format!("Unknown keyword word '{}'", keyword).to_string() }
+        )
+    };
+    Ok(vec![
+       token,
+        Token{ tok_type: TokenType::Comma,  data: TokenData::None , line_num: *line_num },
+    ])
 }
 
 fn tokenize_number(ch: char, char_iter: &mut Chars, line_num: &mut u32) -> Result<Vec<Token>, TokenizerError> {

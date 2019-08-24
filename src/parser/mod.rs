@@ -50,6 +50,9 @@ fn parse_value(stream: &mut TokenStream) -> Result<Value, ParseError> {
                     TokenData::Number(number) => Ok(Value::Number(number.clone())),
                     TokenData::None => Err(ParseError::new("token is missing token data", token.line_num))
                 },
+                TokenType::True => Ok(Value::Keyword("true".to_string())),
+                TokenType::False => Ok(Value::Keyword("false".to_string())),
+                TokenType::Null => Ok(Value::Keyword("null".to_string())),
                 _ => Err(ParseError::new(&format!("unexpected token {:?}", token.tok_type), token.line_num))
             }
 
