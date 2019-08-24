@@ -1,15 +1,20 @@
 extern crate backtrace;
 pub mod error;
-pub mod object;
+pub mod types;
 
 use std::collections::HashMap;
 use crate::token::token::{Token, TokenType, TokenData};
 use crate::token::stream::TokenStream;
 use error::ParseError;
-use object::{Object, Array, Value};
+use types::{Object, Array, Value};
 
-pub fn parse(tokens: Vec<Token>) -> Result<Object, ParseError> {
-    parse_object(&mut TokenStream::new(&tokens))
+pub fn parse(tokens: Vec<Token>) -> Result<Value, ParseError> {
+    let mut stream: TokenStream = TokenStream::new(&tokens);
+    match stream.peek()?.tok_type {
+        TokenType::LBrace => Ok(Value::Object(parse_object(&mut stream)?)),
+        TokenType::LBracket => Ok(Value::Array(parse_array(&mut stream)?)),
+        _ => Ok(parse_value(&mut stream)?)
+    }
 }
 
 fn parse_object(stream: &mut TokenStream) -> Result<Object, ParseError> {
@@ -35,8 +40,7 @@ fn parse_value(stream: &mut TokenStream) -> Result<Value, ParseError> {
             return Ok(Value::Object(object))
         },
         TokenType::LBracket => {
-            let array: Vec<Value> = parse_array(stream)?;
-            return Ok(Value::Array(Array { values: array }))
+            return Ok(Value::Array(parse_array(stream)?))
         },
         _ => {
             let token: &Token = stream.next()?;
@@ -53,7 +57,7 @@ fn parse_value(stream: &mut TokenStream) -> Result<Value, ParseError> {
     }
 }
 
-fn parse_array(stream: &mut TokenStream) -> Result<Vec<Value>, ParseError> {
+fn parse_array(stream: &mut TokenStream) -> Result<Array, ParseError> {
     let mut values: Vec<Value> = Vec::new();
     stream.consume(TokenType::LBracket)?;
 
@@ -69,7 +73,7 @@ fn parse_array(stream: &mut TokenStream) -> Result<Vec<Value>, ParseError> {
         };
     };
     stream.consume(TokenType::RBracket)?;
-    Ok(values)
+    Ok(Array { values })
 }
 
 fn parse_key_values(stream: &mut TokenStream) -> Result<HashMap<String, Value>, ParseError> {

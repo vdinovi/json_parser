@@ -37,7 +37,7 @@ impl<'a> TokenStream<'a> {
     }
 
     pub fn peek(&self) -> Result<&Token, ParseError> {
-        if self.position > 0 && self.position < self.size {
+        if self.position < self.size {
             Ok(&self.tokens[self.position])
         } else {
             Err(ParseError::new("Cannot peek beyond range of token stream", 0))

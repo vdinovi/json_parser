@@ -20,9 +20,9 @@ impl Object {
     pub fn to_pretty_string(&self, depth: usize) -> String {
         let indent: String = std::iter::repeat(" ").take(depth * 2).join("");
         [
-            format!("{}{{\n", indent),
-            self.map.iter().map(|(key, value)| format!("{}  {}:{}\n", indent, key, value.to_pretty_string(depth + 1))).join(","),
-            format!("{}}}\n", indent),
+            format!("{{\n"),
+            self.map.iter().map(|(key, value)| format!("{}  {}: {}", indent, key, value.to_pretty_string(depth + 1))).join(",\n"),
+            format!("\n{}}}", indent),
         ].join("")
     }
 }
@@ -57,9 +57,9 @@ impl Array {
     pub fn to_pretty_string(&self, depth: usize) -> String {
         let indent: String = std::iter::repeat(" ").take(depth * 2).join("");
         [
-            format!("{}[\n", indent),
-            self.values.iter().map(|value| format!("{}{}", indent, value.to_pretty_string(depth + 1))).join(""),
-            format!("{}]\n", indent)
+            format!("[\n"),
+            self.values.iter().map(|value| format!("{}  {}", indent, value.to_pretty_string(depth + 1))).join(",\n"),
+            format!("\n{}]", indent)
         ].join("")
     }
 
@@ -98,12 +98,12 @@ impl fmt::Display for Value {
 }
 
 impl Value {
-    fn to_pretty_string(&self, depth: usize) -> String {
+    pub fn to_pretty_string(&self, depth: usize) -> String {
         match self {
             Value::Object(object) => object.to_pretty_string(depth),
             Value::Array(array) => array.to_pretty_string(depth),
-            Value::String(string) => format!("{}{}\n", std::iter::repeat(" ").take(depth * 2).join(""), string),
-            Value::Number(number) => format!("{}{}\n", std::iter::repeat(" ").take(depth * 2).join(""), number.to_string()),
+            Value::String(string) => string.to_string(),
+            Value::Number(number) => number.to_string()
         }
     }
 }

@@ -7,7 +7,7 @@ use std::io::BufReader;
 use std::fs::File;
 use token::tokenize;
 use token::token::Token;
-use parser::object::Object;
+use parser::types::Value;
 use parser::parse;
 
 fn main() -> Result<(), Box<std::error::Error>> {
@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
     let file = File::open(full_path)?;
     let mut reader = BufReader::new(file);
     let tokens: Vec<Token> = tokenize(&mut reader)?;
-    let object: Object = parse(tokens)?;
-    print!("{}", object.to_pretty_string(0));
+    let value: Value = parse(tokens)?;
+    print!("{}", value.to_pretty_string(0));
     Ok(())
 }
